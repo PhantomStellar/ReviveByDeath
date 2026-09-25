@@ -32,9 +32,9 @@ public final class BedCheckpointEvents {
 			}
 
 			if (CheckpointManager.saveManualCheckpoint(serverPlayer)) {
-				queueMessage(serverPlayer, Component.literal("Rewind checkpoint set"));
+				queueMessage(serverPlayer, Component.translatable("message.revivebydeath.checkpoint_set"));
 			} else {
-				queueMessage(serverPlayer, Component.literal("Rewind checkpoint needs safer ground"));
+				queueMessage(serverPlayer, Component.translatable("message.revivebydeath.checkpoint_unsafe_ground"));
 			}
 
 			return InteractionResult.PASS;

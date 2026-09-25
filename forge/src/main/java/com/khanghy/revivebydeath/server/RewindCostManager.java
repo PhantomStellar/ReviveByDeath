@@ -10,7 +10,9 @@ public final class RewindCostManager {
 	}
 
 	public static void onPlayerWakeUp(PlayerWakeUpEvent event) {
-		if (event.getEntity() instanceof ServerPlayer player && ReviveByDeathConfig.get().resetCostOnSleep) {
+		if (event.getEntity() instanceof ServerPlayer player
+				&& ReviveByDeathConfig.get().resetCostOnSleep
+				&& player.isSleepingLongEnough()) {
 			reset(player);
 		}
 	}

@@ -15,6 +15,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -22,24 +23,25 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.food.FoodData;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.level.block.Blocks;
-
 
 public final class CheckpointManager {
-	private static final Map<UUID, Checkpoint> CHECKPOINTS = new HashMap<>();
 	private static final Map<UUID, PendingRevive> PENDING_REVIVES = new HashMap<>();
 	private static final Map<UUID, ReturnEffect> RETURN_EFFECTS = new HashMap<>();
 	private static final Map<UUID, Integer> POST_REVIVE_PROTECTION = new HashMap<>();
 	private static final Map<UUID, Integer> LAST_CHECKPOINT_CHECKS = new HashMap<>();
-	private static final Map<UUID, CheckpointRiftData> CHECKPOINT_RIFTS = new HashMap<>();
+	private static final Map<UUID, Integer> ACTIVE_SHADOWS = new HashMap<>();
 	private static final float REVIVE_HEALTH = 8.0F;
 	private static final int REVIVE_FOOD = 8;
 
@@ -50,9 +52,11 @@ public final class CheckpointManager {
 		tickPendingRevives(server);
 		tickReturnEffects(server);
 		tickPostReviveProtection(server);
+		tickActiveShadows(server);
 
 		int serverTicks = server.getTickCount();
 		ReviveByDeathConfig config = ReviveByDeathConfig.get();
+		CheckpointSavedData savedData = CheckpointSavedData.get(server);
 
 		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
 			UUID uuid = player.getUUID();
@@ -60,7 +64,7 @@ public final class CheckpointManager {
 				continue;
 			}
 
-			boolean hasCheckpoint = CHECKPOINTS.containsKey(uuid);
+			boolean hasCheckpoint = savedData.hasCheckpoint(uuid);
 			int interval = hasCheckpoint ? config.checkpointRecheckTicks : config.checkpointInitialCheckTicks;
 			interval = Math.max(1, interval);
 			int lastCheckedTick = LAST_CHECKPOINT_CHECKS.getOrDefault(uuid, serverTicks - interval);
@@ -92,17 +96,23 @@ public final class CheckpointManager {
 			return true;
 		}
 
+		MinecraftServer server = player.getServer();
+		if (server == null) {
+			return false;
+		}
+
 		ReviveByDeathConfig config = ReviveByDeathConfig.get();
-		Checkpoint checkpoint = CHECKPOINTS.get(player.getUUID());
+		CheckpointSavedData savedData = CheckpointSavedData.get(server);
+		Checkpoint checkpoint = savedData.getCheckpoint(player.getUUID());
 		if (checkpoint == null) {
 			DebugLogManager.send(player, "No safe checkpoint is saved yet.");
 			return false;
 		}
 
-		ServerLevel level = player.getServer().getLevel(checkpoint.dimension());
+		ServerLevel level = server.getLevel(checkpoint.dimension());
 		if (level == null || !isCheckpointStillSafe(level, checkpoint)) {
 			revertRiftBlocks(player);
-			CHECKPOINTS.remove(player.getUUID());
+			savedData.removeCheckpoint(player.getUUID());
 			DebugLogManager.send(player, "Saved checkpoint is no longer safe.");
 			return false;
 		}
@@ -110,7 +120,6 @@ public final class CheckpointManager {
 		ActivationResult activation = ActivationRules.evaluate(player);
 		if (!activation.allowed()) {
 			ReviveByDeath.LOGGER.debug("Revive denied for {}: {}.", player.getGameProfile().getName(), activation.failureReason());
-			player.sendSystemMessage(Component.literal("Death Rewind failed: " + activation.failureReason() + "."));
 			DebugLogManager.send(player, "Activation failed: " + activation.failureReason() + ".");
 			return false;
 		}
@@ -151,13 +160,30 @@ public final class CheckpointManager {
 	}
 
 	public static boolean hasUsableCheckpoint(ServerPlayer player) {
-		Checkpoint checkpoint = CHECKPOINTS.get(player.getUUID());
+		MinecraftServer server = player.getServer();
+		if (server == null) {
+			return false;
+		}
+		Checkpoint checkpoint = CheckpointSavedData.get(server).getCheckpoint(player.getUUID());
 		if (checkpoint == null) {
 			return false;
 		}
 
-		ServerLevel level = player.getServer().getLevel(checkpoint.dimension());
+		ServerLevel level = server.getLevel(checkpoint.dimension());
 		return level != null && isCheckpointStillSafe(level, checkpoint);
+	}
+
+	public static void onPlayerLoggedIn(ServerPlayer player) {
+		MinecraftServer server = player.getServer();
+		if (server == null) {
+			return;
+		}
+		CheckpointSavedData savedData = CheckpointSavedData.get(server);
+		Checkpoint pending = savedData.popPendingReviveOnLogin(player.getUUID());
+		if (pending != null) {
+			completeRevive(player, new PendingRevive(pending, player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot(), 1, 1));
+			player.sendSystemMessage(Component.translatable("message.revivebydeath.reconnect_completed"));
+		}
 	}
 
 	private static void tickPendingRevives(MinecraftServer server) {
@@ -169,6 +195,7 @@ public final class CheckpointManager {
 		for (Map.Entry<UUID, PendingRevive> entry : PENDING_REVIVES.entrySet()) {
 			ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
 			if (player == null) {
+				CheckpointSavedData.get(server).addPendingReviveOnLogin(entry.getKey(), entry.getValue().checkpoint());
 				finished.add(entry.getKey());
 				continue;
 			}
@@ -248,13 +275,37 @@ public final class CheckpointManager {
 		}
 	}
 
+	private static void tickActiveShadows(MinecraftServer server) {
+		if (ACTIVE_SHADOWS.isEmpty()) {
+			return;
+		}
+
+		List<UUID> toRemove = new ArrayList<>();
+		for (Map.Entry<UUID, Integer> entry : ACTIVE_SHADOWS.entrySet()) {
+			int nextTicks = entry.getValue() - 1;
+			if (nextTicks <= 0) {
+				toRemove.add(entry.getKey());
+				for (ServerLevel level : server.getAllLevels()) {
+					Entity entity = level.getEntity(entry.getKey());
+					if (entity != null && entity.isAlive()) {
+						level.sendParticles(ParticleTypes.POOF, entity.getX(), entity.getY() + 1.0D, entity.getZ(), 10, 0.25D, 0.35D, 0.25D, 0.05D);
+						entity.discard();
+					}
+				}
+			} else {
+				entry.setValue(nextTicks);
+			}
+		}
+
+		for (UUID uuid : toRemove) {
+			ACTIVE_SHADOWS.remove(uuid);
+		}
+	}
+
 	private static void completeRevive(ServerPlayer player, PendingRevive pendingRevive) {
 		Checkpoint checkpoint = pendingRevive.checkpoint();
 		ServerLevel level = player.getServer().getLevel(checkpoint.dimension());
-		if (level == null || !isCheckpointStillSafe(level, checkpoint)) {
-			ReviveByDeath.LOGGER.warn("Could not complete revive for {}; checkpoint became unsafe.", player.getGameProfile().getName());
-			return;
-		}
+		boolean safe = level != null && isCheckpointStillSafe(level, checkpoint);
 
 		player.deathTime = 0;
 		player.hurtTime = 0;
@@ -269,17 +320,51 @@ public final class CheckpointManager {
 		foodData.setFoodLevel(Math.max(foodData.getFoodLevel(), REVIVE_FOOD));
 		foodData.setSaturation(Math.max(foodData.getSaturationLevel(), 2.0F));
 
-		player.teleportTo(level, checkpoint.x(), checkpoint.y(), checkpoint.z(), checkpoint.yaw(), checkpoint.pitch());
-		if (ReviveByDeathConfig.get().createDimensionalRift) {
-			createDimensionalRift(level, checkpoint, player);
+		if (safe) {
+			player.teleportTo(level, checkpoint.x(), checkpoint.y(), checkpoint.z(), checkpoint.yaw(), checkpoint.pitch());
+			if (ReviveByDeathConfig.get().createDimensionalRift) {
+				createDimensionalRift(level, checkpoint, player);
+			}
+		} else {
+			ReviveByDeath.LOGGER.warn("Checkpoint for {} became unsafe or dimension unavailable; redirecting to safe fallback spawn.", player.getGameProfile().getName());
+			teleportToSafeFallback(player);
 		}
+
 		int protectionTicks = Math.max(0, ReviveByDeathConfig.get().postReviveInvulnerabilityTicks);
 		if (protectionTicks > 0) {
 			POST_REVIVE_PROTECTION.put(player.getUUID(), protectionTicks);
 		}
 		int returnTicks = Math.max(1, ReviveByDeathConfig.get().returnEffectTicks);
-		playReturnFeedback(player, level, returnTicks);
+		playReturnFeedback(player, (ServerLevel) player.level(), returnTicks);
 		RETURN_EFFECTS.put(player.getUUID(), new ReturnEffect(returnTicks, returnTicks));
+	}
+
+	private static void teleportToSafeFallback(ServerPlayer player) {
+		MinecraftServer server = player.getServer();
+		if (server == null) {
+			return;
+		}
+
+		BlockPos respawnPos = player.getRespawnPosition();
+		ResourceKey<Level> respawnDim = player.getRespawnDimension();
+		if (respawnPos != null && respawnDim != null) {
+			ServerLevel respawnLevel = server.getLevel(respawnDim);
+			if (respawnLevel != null) {
+				BlockPos feet = respawnPos.above();
+				if (!respawnLevel.getBlockState(feet).isAir()) {
+					feet = respawnPos;
+				}
+				player.teleportTo(respawnLevel, feet.getX() + 0.5D, feet.getY(), feet.getZ() + 0.5D, player.getRespawnAngle(), 0.0F);
+				player.sendSystemMessage(Component.translatable("message.revivebydeath.checkpoint_fallback_spawn"));
+				return;
+			}
+		}
+
+		ServerLevel overworld = server.overworld();
+		BlockPos sharedSpawn = overworld.getSharedSpawnPos();
+		BlockPos safePos = overworld.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, sharedSpawn);
+		player.teleportTo(overworld, safePos.getX() + 0.5D, safePos.getY(), safePos.getZ() + 0.5D, 0.0F, 0.0F);
+		player.sendSystemMessage(Component.translatable("message.revivebydeath.checkpoint_fallback_world"));
 	}
 
 	private static void stabilizePendingPlayer(ServerPlayer player) {
@@ -310,14 +395,15 @@ public final class CheckpointManager {
 
 	private static void saveCheckpoint(ServerPlayer player, int serverTicks) {
 		revertRiftBlocks(player);
-		CHECKPOINTS.put(player.getUUID(), new Checkpoint(
+		Checkpoint checkpoint = new Checkpoint(
 				player.level().dimension(),
 				player.getX(),
 				player.getY(),
 				player.getZ(),
 				player.getYRot(),
 				player.getXRot(),
-				serverTicks));
+				serverTicks);
+		CheckpointSavedData.get(player.getServer()).setCheckpoint(player.getUUID(), checkpoint);
 	}
 
 	private static boolean isSafeCheckpoint(ServerPlayer player) {
@@ -403,15 +489,19 @@ public final class CheckpointManager {
 			shadow.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, -1, 1)); // Speed II permanent
 			shadow.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, -1, 0));   // Strength I permanent
 			shadow.addEffect(new MobEffectInstance(MobEffects.GLOWING, 200, 0));       // Glowing for 10 seconds
+			shadow.setCanPickUpLoot(false);
 
 			level.addFreshEntity(shadow);
+			ACTIVE_SHADOWS.put(shadow.getUUID(), 1200);
 		}
 	}
 
 	private static void createDimensionalRift(ServerLevel level, Checkpoint checkpoint, ServerPlayer player) {
 		BlockPos centerFloor = BlockPos.containing(checkpoint.x(), checkpoint.y(), checkpoint.z()).below();
-		CheckpointRiftData riftData = CHECKPOINT_RIFTS.computeIfAbsent(player.getUUID(), k -> new CheckpointRiftData());
+		CheckpointSavedData savedData = CheckpointSavedData.get(player.getServer());
+		CheckpointSavedData.CheckpointRiftData riftData = savedData.getOrCreateRiftData(player.getUUID());
 		riftData.reviveCount++;
+		savedData.markDirtyData();
 
 		int radius = Math.min(1 + (riftData.reviveCount - 1) / 2, 3);
 		double replaceChance = Math.min(0.20 + (riftData.reviveCount - 1) * 0.15, 0.70);
@@ -425,18 +515,22 @@ public final class CheckpointManager {
 
 						// If already tracked, check if player modified it
 						if (riftData.originalBlocks.containsKey(pos)) {
-							RiftRecord record = riftData.originalBlocks.get(pos);
-							if (!state.is(record.placedState.getBlock())) {
+							CheckpointSavedData.RiftRecord record = riftData.originalBlocks.get(pos);
+							if (!state.equals(record.placedState)) {
 								riftData.originalBlocks.remove(pos);
+								savedData.markDirtyData();
 							}
 							continue;
 						}
 
-						if (!state.isAir() && !state.liquid() && state.isFaceSturdy(level, pos, Direction.UP)) {
+						if (!state.isAir() && !state.liquid() && !state.hasBlockEntity()
+								&& net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getNamespace().equals("minecraft")
+								&& state.isFaceSturdy(level, pos, Direction.UP)) {
 							if (level.getRandom().nextDouble() < replaceChance) {
 								BlockState placedState = getRiftReplacementBlock(state);
 								if (placedState != null && !placedState.equals(state)) {
-									riftData.originalBlocks.putIfAbsent(pos, new RiftRecord(state, placedState));
+									riftData.originalBlocks.putIfAbsent(pos, new CheckpointSavedData.RiftRecord(state, placedState));
+									savedData.markDirtyData();
 									level.setBlockAndUpdate(pos, placedState);
 									level.sendParticles(ParticleTypes.PORTAL, pos.getX() + 0.5D, pos.getY() + 1.1D, pos.getZ() + 0.5D, 4, 0.2D, 0.1D, 0.2D, 0.05D);
 									level.playSound(null, pos, net.minecraft.sounds.SoundEvents.DEEPSLATE_BREAK, SoundSource.BLOCKS, 0.3F, 0.8F);
@@ -478,21 +572,22 @@ public final class CheckpointManager {
 			return Blocks.GRAVEL.defaultBlockState();
 		}
 
-		return Blocks.TUFF.defaultBlockState();
+		return null; // Leave unrecognized and modded blocks untouched.
 	}
 
 	public static void revertRiftBlocks(ServerPlayer player) {
-		CheckpointRiftData riftData = CHECKPOINT_RIFTS.remove(player.getUUID());
-		if (riftData == null || riftData.originalBlocks.isEmpty()) {
-			return;
-		}
-
 		MinecraftServer server = player.getServer();
 		if (server == null) {
 			return;
 		}
 
-		Checkpoint activeCheckpoint = CHECKPOINTS.get(player.getUUID());
+		CheckpointSavedData savedData = CheckpointSavedData.get(server);
+		CheckpointSavedData.CheckpointRiftData riftData = savedData.getRiftData(player.getUUID());
+		if (riftData == null || riftData.originalBlocks.isEmpty()) {
+			return;
+		}
+
+		Checkpoint activeCheckpoint = savedData.getCheckpoint(player.getUUID());
 		if (activeCheckpoint == null) {
 			return;
 		}
@@ -502,33 +597,19 @@ public final class CheckpointManager {
 			return;
 		}
 
-		for (Map.Entry<BlockPos, RiftRecord> entry : riftData.originalBlocks.entrySet()) {
+		savedData.removeRiftData(player.getUUID());
+		for (Map.Entry<BlockPos, CheckpointSavedData.RiftRecord> entry : riftData.originalBlocks.entrySet()) {
 			BlockPos pos = entry.getKey();
-			RiftRecord record = entry.getValue();
+			CheckpointSavedData.RiftRecord record = entry.getValue();
 
 			if (checkpointLevel.isInWorldBounds(pos)) {
 				BlockState currentState = checkpointLevel.getBlockState(pos);
-				if (currentState.is(record.placedState.getBlock())) {
+				if (currentState.equals(record.placedState)) {
 					checkpointLevel.sendParticles(ParticleTypes.WITCH, pos.getX() + 0.5D, pos.getY() + 1.1D, pos.getZ() + 0.5D, 5, 0.2D, 0.2D, 0.2D, 0.02D);
 					checkpointLevel.playSound(null, pos, net.minecraft.sounds.SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.BLOCKS, 0.4F, 1.2F);
 					checkpointLevel.setBlockAndUpdate(pos, record.originalState);
 				}
 			}
 		}
-	}
-
-	private static class RiftRecord {
-		final BlockState originalState;
-		final BlockState placedState;
-
-		RiftRecord(BlockState originalState, BlockState placedState) {
-			this.originalState = originalState;
-			this.placedState = placedState;
-		}
-	}
-
-	private static class CheckpointRiftData {
-		int reviveCount = 0;
-		final Map<BlockPos, RiftRecord> originalBlocks = new HashMap<>();
 	}
 }

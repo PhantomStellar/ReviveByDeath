@@ -319,6 +319,14 @@ public final class ReviveByDeathClient {
 		cutsceneSoundPlayed = true;
 	}
 
+	public static void onDisconnect() {
+		Minecraft client = Minecraft.getInstance();
+		introFadeTicks = 0;
+		cutsceneTicks = 0;
+		returnEffectTicks = 0;
+		restoreCutsceneState(client);
+	}
+
 	private static void restoreCutsceneState(Minecraft client) {
 		restoreGui(client);
 		restoreEnvironmentAudio(client);

@@ -9,6 +9,7 @@ import java.util.Locale;
 import java.util.Map;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -52,6 +53,7 @@ public class ReviveByDeathClient implements ClientModInitializer {
 		ClientPlayNetworking.registerGlobalReceiver(ReviveEffectPayload.TYPE, (payload, context) ->
 				context.client().execute(() -> startReturnEffect(context.client(), payload.durationTicks())));
 		ClientTickEvents.END_CLIENT_TICK.register(ReviveByDeathClient::tickEffects);
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> onDisconnect());
 	}
 
 	private static void startCutscene(Minecraft client, int durationTicks, int frameCount, int introTicks) {
@@ -325,6 +327,14 @@ public class ReviveByDeathClient implements ClientModInitializer {
 
 		client.getSoundManager().play(SimpleSoundInstance.forUI(ModSounds.CUTSCENE_HEARTBEAT, 1.0F, 1.0F));
 		cutsceneSoundPlayed = true;
+	}
+
+	public static void onDisconnect() {
+		Minecraft client = Minecraft.getInstance();
+		introFadeTicks = 0;
+		cutsceneTicks = 0;
+		returnEffectTicks = 0;
+		restoreCutsceneState(client);
 	}
 
 	private static void restoreCutsceneState(Minecraft client) {

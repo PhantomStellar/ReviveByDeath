@@ -1,0 +1,51 @@
+package com.khanghy.revivebydeath.registry;
+
+import com.khanghy.revivebydeath.ReviveByDeath;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.EnchantmentCategory;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegistryObject;
+
+public final class ModEnchantments {
+	private static final DeferredRegister<Enchantment> ENCHANTMENTS =
+			DeferredRegister.create(ForgeRegistries.ENCHANTMENTS, ReviveByDeath.MOD_ID);
+
+	public static final RegistryObject<Enchantment> DEATH_REWIND = ENCHANTMENTS.register("death_rewind", () ->
+			new Enchantment(
+					Enchantment.Rarity.VERY_RARE,
+					EnchantmentCategory.ARMOR,
+					new EquipmentSlot[]{EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET}
+			) {
+				@Override
+				public int getMinCost(int level) {
+					return 15;
+				}
+
+				@Override
+				public int getMaxCost(int level) {
+					return 50;
+				}
+
+				@Override
+				public int getMaxLevel() {
+					return 1;
+				}
+
+				@Override
+				public boolean isTreasureOnly() {
+					return true;
+				}
+			}
+	);
+
+	private ModEnchantments() {
+	}
+
+	public static void register(IEventBus modEventBus) {
+		ENCHANTMENTS.register(modEventBus);
+		ReviveByDeath.LOGGER.debug("Registered ReviveByDeath enchantment.");
+	}
+}

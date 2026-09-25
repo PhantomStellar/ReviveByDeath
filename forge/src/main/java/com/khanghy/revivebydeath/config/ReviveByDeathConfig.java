@@ -18,6 +18,7 @@ public final class ReviveByDeathConfig {
 	private static FileTime lastLoadedModifiedTime;
 
 	public String activationMode = ActivationMode.ENCHANTMENT.configName();
+	public String revivePriority = RevivePriority.DOWNED_FIRST.configName();
 	public boolean replaceVanillaTotem = true;
 	public boolean consumeTotem = true;
 	public int enchantmentArmorDamage = 35;
@@ -60,6 +61,10 @@ public final class ReviveByDeathConfig {
 
 	public ActivationMode activationMode() {
 		return ActivationMode.fromConfig(activationMode);
+	}
+
+	public RevivePriority revivePriority() {
+		return RevivePriority.fromConfig(revivePriority);
 	}
 
 	private static ReviveByDeathConfig load() {

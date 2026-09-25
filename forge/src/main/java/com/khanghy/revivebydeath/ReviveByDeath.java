@@ -2,6 +2,8 @@ package com.khanghy.revivebydeath;
 
 import com.khanghy.revivebydeath.client.ReviveByDeathClient;
 import com.khanghy.revivebydeath.command.ModCommands;
+import com.khanghy.revivebydeath.config.ReviveByDeathConfig;
+import com.khanghy.revivebydeath.config.RevivePriority;
 import com.khanghy.revivebydeath.network.ForgeNetwork;
 import com.khanghy.revivebydeath.registry.ModEnchantments;
 import com.khanghy.revivebydeath.registry.ModSounds;
@@ -12,14 +14,17 @@ import com.khanghy.revivebydeath.server.RewindCostManager;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.living.LivingUseTotemEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.entity.player.PlayerWakeUpEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -56,8 +61,24 @@ public class ReviveByDeath {
 		BedCheckpointEvents.onServerTick(event);
 	}
 
-	@SubscribeEvent
-	public void onLivingDeath(LivingDeathEvent event) {
+	@SubscribeEvent(priority = EventPriority.HIGHEST)
+	public void onLivingDeathRewindFirst(LivingDeathEvent event) {
+		if (ReviveByDeathConfig.get().revivePriority() == RevivePriority.REWIND_FIRST) {
+			handleLivingDeath(event);
+		}
+	}
+
+	@SubscribeEvent(priority = EventPriority.HIGH)
+	public void onLivingDeathDownedFirst(LivingDeathEvent event) {
+		if (ReviveByDeathConfig.get().revivePriority() == RevivePriority.DOWNED_FIRST) {
+			handleLivingDeath(event);
+		}
+	}
+
+	private void handleLivingDeath(LivingDeathEvent event) {
+		if (event.isCanceled()) {
+			return;
+		}
 		if (!(event.getEntity() instanceof ServerPlayer player)) {
 			return;
 		}
@@ -97,6 +118,13 @@ public class ReviveByDeath {
 		RewindCostManager.onPlayerWakeUp(event);
 	}
 
+	@SubscribeEvent
+	public void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+		if (event.getEntity() instanceof ServerPlayer player) {
+			CheckpointManager.onPlayerLoggedIn(player);
+		}
+	}
+
 	@Mod.EventBusSubscriber(modid = MOD_ID, value = Dist.CLIENT)
 	public static final class ClientEvents {
 		private ClientEvents() {
@@ -105,6 +133,11 @@ public class ReviveByDeath {
 		@SubscribeEvent
 		public static void onClientTick(TickEvent.ClientTickEvent.Post event) {
 			ReviveByDeathClient.tickEffects();
+		}
+
+		@SubscribeEvent
+		public static void onClientLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+			ReviveByDeathClient.onDisconnect();
 		}
 	}
 }

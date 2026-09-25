@@ -1,0 +1,33 @@
+{
+	"schemaVersion": 1,
+	"id": "revivebydeath",
+	"version": "${version}",
+	"name": "ReviveByDeath",
+	"description": "Replaces fatal moments with a cinematic rewind, restoring players to safe checkpoints.",
+	"authors": [
+		"KhangHy"
+	],
+	"license": "MIT",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.khanghy.revivebydeath.ReviveByDeath"
+		],
+		"client": [
+			"com.khanghy.revivebydeath.client.ReviveByDeathClient"
+		]
+	},
+	"mixins": [
+		"revivebydeath.mixins.json",
+		{
+			"config": "revivebydeath.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.15.0",
+		"minecraft": "~1.20.1",
+		"java": ">=17",
+		"fabric-api": "*"
+	}
+}

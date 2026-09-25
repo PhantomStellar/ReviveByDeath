@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.0
+
+- Players can now be downed by another revival mod before Death Rewind steps in. Server owners can change which gets priority.
+- Dimensional rifts are safer for modpacks: they avoid blocks from other mods and restore changed blocks more reliably, even after a restart.
+- Revives recover more safely when a checkpoint is unavailable or a player reconnects during the cutscene.
+- Fixed cases where the cutscene could leave audio muted or the HUD hidden. Added Vietnamese translations.
+
+## 1.0.0-release
+
+### Added
+- Released 1.20.1 Forge version of the mod
+- Released 1.21.1 Neoforge version of the mod
+
+### Changed
+- Removed the enchant required message
+
 ## 0.4.0-beta.1
 
 ### Changed

@@ -1,5 +1,21 @@
 {
 	"enchantment.revivebydeath.death_rewind": "Death Rewind",
 	"subtitles.revivebydeath.cutscene_heartbeat": "Death rewind pulses",
-	"subtitles.revivebydeath.return_whoosh": "Checkpoint restored"
+	"subtitles.revivebydeath.return_whoosh": "Checkpoint restored",
+	"message.revivebydeath.checkpoint_set": "Rewind checkpoint set",
+	"message.revivebydeath.checkpoint_unsafe_ground": "Rewind checkpoint needs safer ground",
+	"message.revivebydeath.checkpoint_fallback_spawn": "Saved checkpoint was unsafe; returned to your spawn point.",
+	"message.revivebydeath.checkpoint_fallback_world": "Saved checkpoint was unsafe; returned to world spawn.",
+	"message.revivebydeath.reconnect_completed": "Death rewind completed upon reconnecting.",
+	"message.revivebydeath.cost_reset": "Rewind XP cost reset.",
+	"message.revivebydeath.cost_reset_admin": "Rewind XP cost reset by administrator.",
+	"message.revivebydeath.cost_reset_admin_success": "Reset rewind cost for %s player(s).",
+	"message.revivebydeath.revert_all_rifts_success": "Reverted %s active dimensional rift(s).",
+	"message.revivebydeath.gave_book": "Gave Death Rewind enchanted book.",
+	"message.revivebydeath.mode_set": "ReviveByDeath mode set to %s.",
+	"message.revivebydeath.cutscene_set": "ReviveByDeath cutscene %s.",
+	"message.revivebydeath.debug_log_set": "ReviveByDeath debug log %s.",
+	"message.revivebydeath.revive_priority_status": "Revive priority: %s",
+	"option.revivebydeath.revive_priority.downed_first": "Downed first",
+	"option.revivebydeath.revive_priority.rewind_first": "Death rewind first"
 }

@@ -10,7 +10,7 @@ version = mod_version
 group = mod_group_id
 
 base {
-    archivesName = "${mod_id}-forge"
+    archivesName = "${mod_id}-forge-1.21.1"
 }
 
 mixin {

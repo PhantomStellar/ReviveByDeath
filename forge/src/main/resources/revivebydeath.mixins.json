@@ -5,6 +5,8 @@
 	"compatibilityLevel": "JAVA_21",
 	"refmap": "revivebydeath.refmap.json",
 	"mixins": [
+	],
+	"client": [
 		"GameRendererMixin"
 	],
 	"environment": "CLIENT",

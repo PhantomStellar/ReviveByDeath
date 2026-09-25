@@ -1,0 +1,14 @@
+{
+	"cutscene_heartbeat": {
+		"sounds": [
+			"revivebydeath:cutscene_heartbeat"
+		],
+		"subtitle": "subtitles.revivebydeath.cutscene_heartbeat"
+	},
+	"return_whoosh": {
+		"sounds": [
+			"revivebydeath:return_whoosh"
+		],
+		"subtitle": "subtitles.revivebydeath.return_whoosh"
+	}
+}

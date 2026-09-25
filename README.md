@@ -1,6 +1,6 @@
 # ReviveByDeath
 
-ReviveByDeath is a Minecraft 1.21.1 mod available for both **Fabric** and **Forge** that replaces fatal moments with a short, cinematic rewind sequence, restoring the player to their latest safe checkpoint.
+ReviveByDeath is a Minecraft 1.20.1 and 1.21.1 mod for **Fabric**, **Forge**, and **NeoForge** that replaces fatal moments with a short, cinematic rewind sequence, restoring the player to their latest safe checkpoint.
 
 All visual and audio assets in this project are original placeholders/custom assets. Do not add copyrighted anime, game, movie, logo, quote, or sound content unless you have explicit rights to use and monetize it.
 
@@ -8,10 +8,11 @@ All visual and audio assets in this project are original placeholders/custom ass
 
 ## Requirements
 
-- **Minecraft**: `1.21.1`
-- **Fabric Version**: Requires Fabric Loader `0.19.3` or newer and Fabric API.
-- **Forge Version**: Requires Forge `52.1.0` or newer.
-- **Java**: `21`
+- **Minecraft**: `1.20.1` or `1.21.1`; use a JAR built for your exact version and loader.
+- **Fabric 1.21.1**: Requires Fabric Loader `0.19.3` or newer and Fabric API.
+- **Forge 1.21.1**: Requires Forge `52.1.0` or newer.
+- **NeoForge 1.21.1**: Requires NeoForge `21.1` or newer.
+- **Java**: `17` for Minecraft 1.20.1, `21` for Minecraft 1.21.1.
 
 ReviveByDeath is required on both client and server.
 
@@ -41,7 +42,7 @@ When returning to the checkpoint, a cosmic rift/timeline fracture cracks the flo
   - `Stone / Cobblestone` -> `Tuff`
   - `Grass / Dirt` -> `Coarse Dirt`
   - `Sand` -> `Gravel`
-  - Fallback -> `Tuff`
+- Blocks outside the supported vanilla set, including blocks from other mods and blocks with stored data, are left untouched.
 - **Gradual Expansion**: The rift grows in radius and density if the player repeatedly dies and returns to the same active checkpoint.
 - **Smart Reversion & No Conflict**: When the checkpoint is reset (e.g. setting a new checkpoint, sleeping in a bed, true vanilla death, or admin command), all rift blocks automatically revert back to their original states. If a player has broken or modified a block in the meantime, the mod is smart enough to leave it alone.
 - Includes visual Portal particles/crumbling sound on crack placement, and Witch particles/clock chime sound right before reversion.
@@ -101,6 +102,7 @@ Recommended default:
 ```json
 {
   "activationMode": "enchantment",
+  "revivePriority": "downed_first",
   "replaceVanillaTotem": true,
   "consumeTotem": true,
   "enchantmentArmorDamage": 35,
@@ -112,8 +114,8 @@ Recommended default:
   "resetCostOnDeath": true,
   "enableCutscene": true,
   "cutsceneIntroFadeTicks": 4,
-  "cutsceneTicks": 32,
-  "cutsceneFrames": 50,
+  "cutsceneTicks": 30,
+  "cutsceneFrames": 52,
   "returnEffectTicks": 14,
   "postReviveInvulnerabilityTicks": 60,
   "checkpointInitialCheckTicks": 10,
@@ -122,6 +124,17 @@ Recommended default:
   "createDimensionalRift": true
 }
 ```
+
+`revivePriority` is a server-wide setting on all six supported builds (Fabric, Forge and NeoForge for Minecraft 1.20.1 and 1.21.1). It controls the order in which ReviveByDeath tries to rewind relative to downed/revival mods:
+
+- `downed_first` (default): Give a downed/revival mod the first chance to save the player. If it allows a later fatal death, ReviveByDeath tries to rewind. If neither saves the player, normal death proceeds and grave mods follow their own rules.
+- `rewind_first`: ReviveByDeath tries to rewind first. If its checkpoint, activation, or cost requirements are not met, the other revival mod can still put the player in a downed state.
+
+Edit `config/revivebydeath.json` on the server. Existing config files receive `downed_first` when upgraded. Restart the server after changing this setting.
+
+For Revive Me, leave its `Run_Death_Event_First` option disabled when using `downed_first`. Enabling that option makes Revive Me run other mods' death listeners before it tries to down the player.
+
+Fabric has downed/revival mods too, including Not Enough Revives (1.20.1 and 1.21.1) and PlayerReviveFabric (1.20.1). The exact order can depend on each mod's death hook, so test the full downed, bleedout, rewind, and normal-death sequence in your modpack before updating a live server.
 
 ---
 
@@ -150,19 +163,19 @@ OP-only commands:
 
 ## Build & Project Structure
 
-The project is split into two modules:
-- `/fabric`: The Fabric loader implementation.
-- `/forge`: The Forge loader implementation.
+The project has one module per loader and Minecraft version:
+- `/fabric`, `/forge`, `/neoforge`: Minecraft 1.21.1.
+- `/fabric-1.20.1`, `/forge-1.20.1`, `/neoforge-1.20.1`: Minecraft 1.20.1.
 
 To compile each version, go into its directory and run the gradle wrapper:
 
-For Fabric:
+For Fabric 1.21.1:
 ```powershell
 cd fabric
 .\gradlew.bat clean build
 ```
 
-For Forge:
+For Forge 1.21.1:
 ```powershell
 cd forge
 .\gradlew.bat clean build

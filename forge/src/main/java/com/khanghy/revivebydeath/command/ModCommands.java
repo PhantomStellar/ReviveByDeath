@@ -6,6 +6,7 @@ import com.khanghy.revivebydeath.registry.ModEnchantments;
 import com.khanghy.revivebydeath.server.ActivationResult;
 import com.khanghy.revivebydeath.server.ActivationRules;
 import com.khanghy.revivebydeath.server.CheckpointManager;
+import com.khanghy.revivebydeath.server.CheckpointSavedData;
 import com.khanghy.revivebydeath.server.DebugLogManager;
 import com.khanghy.revivebydeath.server.RewindCostManager;
 import com.mojang.brigadier.CommandDispatcher;
@@ -58,7 +59,16 @@ public final class ModCommands {
 								.then(Commands.literal("on")
 										.executes(context -> setCutsceneEnabled(true, context.getSource().getPlayerOrException())))
 								.then(Commands.literal("off")
-										.executes(context -> setCutsceneEnabled(false, context.getSource().getPlayerOrException())))));
+										.executes(context -> setCutsceneEnabled(false, context.getSource().getPlayerOrException()))))
+						.then(Commands.literal("revert_all_rifts")
+								.requires(source -> source.hasPermission(2))
+								.executes(context -> revertAllRifts(context.getSource()))));
+	}
+
+	private static int revertAllRifts(CommandSourceStack source) {
+		int count = CheckpointSavedData.get(source.getServer()).revertAllRifts(source.getServer());
+		source.sendSuccess(() -> Component.translatable("message.revivebydeath.revert_all_rifts_success", count), true);
+		return count;
 	}
 
 	private static int giveBook(ServerPlayer player) {
@@ -72,31 +82,33 @@ public final class ModCommands {
 		ItemStack book = new ItemStack(Items.ENCHANTED_BOOK);
 		book.set(DataComponents.STORED_ENCHANTMENTS, enchantments.toImmutable());
 		player.getInventory().placeItemBackInInventory(book);
-		player.sendSystemMessage(Component.literal("Gave Death Rewind enchanted book."));
+		player.sendSystemMessage(Component.translatable("message.revivebydeath.gave_book"));
 		return 1;
 	}
 
 	private static int setMode(ActivationMode mode, ServerPlayer player) {
 		ReviveByDeathConfig.setActivationMode(mode);
-		player.sendSystemMessage(Component.literal("ReviveByDeath mode set to " + mode.configName() + "."));
+		player.sendSystemMessage(Component.translatable("message.revivebydeath.mode_set", mode.configName()));
 		return 1;
 	}
 
 	private static int setCutsceneEnabled(boolean enabled, ServerPlayer player) {
 		ReviveByDeathConfig.setCutsceneEnabled(enabled);
-		player.sendSystemMessage(Component.literal("ReviveByDeath cutscene " + (enabled ? "enabled" : "disabled") + "."));
+		player.sendSystemMessage(Component.translatable("message.revivebydeath.cutscene_set", enabled ? "enabled" : "disabled"));
 		return 1;
 	}
 
 	private static int setDebugLog(boolean enabled, ServerPlayer player) {
 		DebugLogManager.setEnabled(player, enabled);
-		player.sendSystemMessage(Component.literal("ReviveByDeath debug log " + (enabled ? "enabled" : "disabled") + "."));
+		player.sendSystemMessage(Component.translatable("message.revivebydeath.debug_log_set", enabled ? "enabled" : "disabled"));
 		return 1;
 	}
 
 	private static int status(ServerPlayer player) {
 		ReviveByDeathConfig config = ReviveByDeathConfig.get();
 		player.sendSystemMessage(Component.literal("ReviveByDeath mode: " + config.activationMode().configName()));
+		player.sendSystemMessage(Component.translatable("message.revivebydeath.revive_priority_status",
+				Component.translatable("option.revivebydeath.revive_priority." + config.revivePriority().configName())));
 		player.sendSystemMessage(Component.literal("Cutscene: " + (config.enableCutscene ? "enabled" : "disabled")));
 		player.sendSystemMessage(Component.literal("Debug log: " + (DebugLogManager.isEnabled(player) ? "enabled" : "disabled")));
 
@@ -109,16 +121,16 @@ public final class ModCommands {
 
 	private static int resetCost(ServerPlayer player) {
 		RewindCostManager.reset(player);
-		player.sendSystemMessage(Component.literal("Rewind XP cost reset."));
+		player.sendSystemMessage(Component.translatable("message.revivebydeath.cost_reset"));
 		return 1;
 	}
 
 	private static int resetCost(CommandSourceStack source, java.util.Collection<ServerPlayer> targets) {
 		for (ServerPlayer player : targets) {
 			RewindCostManager.reset(player);
-			player.sendSystemMessage(Component.literal("Rewind XP cost reset by administrator."));
+			player.sendSystemMessage(Component.translatable("message.revivebydeath.cost_reset_admin"));
 		}
-		source.sendSuccess(() -> Component.literal("Reset rewind cost for " + targets.size() + " player(s)."), true);
+		source.sendSuccess(() -> Component.translatable("message.revivebydeath.cost_reset_admin_success", targets.size()), true);
 		return targets.size();
 	}
 }

@@ -1,0 +1,21 @@
+{
+	"enchantment.revivebydeath.death_rewind": "Tử Vong Đảo Ngược",
+	"subtitles.revivebydeath.cutscene_heartbeat": "Nhịp tim hồi sinh vang lên",
+	"subtitles.revivebydeath.return_whoosh": "Đã khôi phục điểm lưu",
+	"message.revivebydeath.checkpoint_set": "Đã lưu điểm hồi sinh Rewind",
+	"message.revivebydeath.checkpoint_unsafe_ground": "Điểm lưu Rewind cần vị trí đứng an toàn hơn",
+	"message.revivebydeath.checkpoint_fallback_spawn": "Điểm lưu không còn an toàn; đã đưa bạn về điểm hồi sinh cá nhân.",
+	"message.revivebydeath.checkpoint_fallback_world": "Điểm lưu không còn an toàn; đã đưa bạn về điểm hồi sinh thế giới.",
+	"message.revivebydeath.reconnect_completed": "Đã hoàn tất hồi sinh Rewind khi bạn kết nối lại.",
+	"message.revivebydeath.cost_reset": "Đã đặt lại chi phí kinh nghiệm hồi sinh.",
+	"message.revivebydeath.cost_reset_admin": "Chi phí kinh nghiệm hồi sinh đã được quản trị viên đặt lại.",
+	"message.revivebydeath.cost_reset_admin_success": "Đã đặt lại chi phí hồi sinh cho %s người chơi.",
+	"message.revivebydeath.revert_all_rifts_success": "Đã hoàn nguyên %s vết nứt không gian đang hoạt động.",
+	"message.revivebydeath.gave_book": "Đã nhận sách phù phép Tử Vong Đảo Ngược.",
+	"message.revivebydeath.mode_set": "Chế độ ReviveByDeath được đặt thành %s.",
+	"message.revivebydeath.cutscene_set": "Cutscene ReviveByDeath đã %s.",
+	"message.revivebydeath.debug_log_set": "Nhật ký gỡ lỗi ReviveByDeath đã %s.",
+	"message.revivebydeath.revive_priority_status": "Thứ tự hồi sinh: %s",
+	"option.revivebydeath.revive_priority.downed_first": "Gục trước",
+	"option.revivebydeath.revive_priority.rewind_first": "Đảo ngược tử vong trước"
+}

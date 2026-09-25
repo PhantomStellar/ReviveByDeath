@@ -10,8 +10,10 @@ public final class RewindCostManager {
 	}
 
 	public static void registerEvents() {
-		EntitySleepEvents.START_SLEEPING.register((entity, sleepingPos) -> {
-			if (entity instanceof ServerPlayer player && ReviveByDeathConfig.get().resetCostOnSleep) {
+		EntitySleepEvents.STOP_SLEEPING.register((entity, sleepingPos) -> {
+			if (entity instanceof ServerPlayer player
+					&& ReviveByDeathConfig.get().resetCostOnSleep
+					&& player.isSleepingLongEnough()) {
 				reset(player);
 			}
 		});
