@@ -1,6 +1,6 @@
 # ReviveByDeath
 
-ReviveByDeath is a Minecraft 1.20.1 and 1.21.1 mod for **Fabric**, **Forge**, and **NeoForge** that replaces fatal moments with a short, cinematic rewind sequence, restoring the player to their latest safe checkpoint.
+ReviveByDeath is a Minecraft 1.20.1, 1.21.1, and 26.3 mod for **Fabric**, **Forge**, and **NeoForge** that replaces fatal moments with a short, cinematic rewind sequence, restoring the player to their latest safe checkpoint.
 
 All visual and audio assets in this project are original placeholders/custom assets. Do not add copyrighted anime, game, movie, logo, quote, or sound content unless you have explicit rights to use and monetize it.
 
@@ -8,11 +8,12 @@ All visual and audio assets in this project are original placeholders/custom ass
 
 ## Requirements
 
-- **Minecraft**: `1.20.1` or `1.21.1`; use a JAR built for your exact version and loader.
+- **Minecraft**: `1.20.1`, `1.21.1`, or `26.3`; use a JAR built for your exact version and loader.
 - **Fabric 1.21.1**: Requires Fabric Loader `0.19.3` or newer and Fabric API.
 - **Forge 1.21.1**: Requires Forge `52.1.0` or newer.
 - **NeoForge 1.21.1**: Requires NeoForge `21.1` or newer.
-- **Java**: `17` for Minecraft 1.20.1, `21` for Minecraft 1.21.1.
+- **NeoForge 26.3**: Requires NeoForge `26.3` or newer.
+- **Java**: `17` for Minecraft 1.20.1, `21` for Minecraft 1.21.1, `25` for Minecraft 26.3.
 
 ReviveByDeath is required on both client and server.
 
@@ -65,7 +66,7 @@ When returning to the checkpoint, a cosmic rift/timeline fracture cracks the flo
 
 Death Rewind is a level 1 armor enchantment available through vanilla-style progression:
 - Enchanting table, because it is tagged as `minecraft:non_treasure`.
-- Villager trading, because it is tagged as `minecraft:tradeable`.
+- Villager trading, because it is tagged as `minecraft:tradeable` (renamed to `minecraft:on_traded_equipment` on Minecraft 26.3; the NeoForge 26.3 build ships the new tag name).
 - OP test command: `/revivebydeath give_book`.
 
 Only one equipped armor piece needs the enchantment to activate rewind.
@@ -125,7 +126,7 @@ Recommended default:
 }
 ```
 
-`revivePriority` is a server-wide setting on all six supported builds (Fabric, Forge and NeoForge for Minecraft 1.20.1 and 1.21.1). It controls the order in which ReviveByDeath tries to rewind relative to downed/revival mods:
+`revivePriority` is a server-wide setting on all seven supported builds (Fabric, Forge and NeoForge for Minecraft 1.20.1 and 1.21.1, plus NeoForge for Minecraft 26.3). It controls the order in which ReviveByDeath tries to rewind relative to downed/revival mods:
 
 - `downed_first` (default): Give a downed/revival mod the first chance to save the player. If it allows a later fatal death, ReviveByDeath tries to rewind. If neither saves the player, normal death proceeds and grave mods follow their own rules.
 - `rewind_first`: ReviveByDeath tries to rewind first. If its checkpoint, activation, or cost requirements are not met, the other revival mod can still put the player in a downed state.
@@ -166,6 +167,7 @@ OP-only commands:
 The project has one module per loader and Minecraft version:
 - `/fabric`, `/forge`, `/neoforge`: Minecraft 1.21.1.
 - `/fabric-1.20.1`, `/forge-1.20.1`, `/neoforge-1.20.1`: Minecraft 1.20.1.
+- `/neoforge-26.3`: Minecraft 26.3 (NeoForge `26.3` or newer, Java 25).
 
 To compile each version, go into its directory and run the gradle wrapper:
 
@@ -178,6 +180,12 @@ cd fabric
 For Forge 1.21.1:
 ```powershell
 cd forge
+.\gradlew.bat clean build
+```
+
+For NeoForge 26.3:
+```powershell
+cd neoforge-26.3
 .\gradlew.bat clean build
 ```
 
